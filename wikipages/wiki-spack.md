@@ -1,133 +1,144 @@
+
 **This page is under construction!**
 
 # Existing users
 
 If you are a user of [Spack](https://github.com/spack/spack) you might be glad to hear that preCICE and [ openFOAM
 adapter for preCICE ](https://github.com/precice/openfoam-adapter) made their way in the Spack repository, starting
-from this  [commit](https://github.com/spack/spack/commit/f946a83c8cb929dd0021d8a5a2a0a1d99ba2e47d)
+from this  [commit](https://github.com/spack/spack/commit/f946a83c8cb929dd0021d8a5a2a0a1d99ba2e47d).
 
 Therefore they can be readily used e.g:
 
 ```bash
-spack install precice ^boost@1.65.1
+$ spack install precice ^boost@1.65.1
 ```
 to fetch the latest development version of preCICE.
 And for the openFOAM adapter:
 ```bash
-spack install of-precice
+$ spack install of-precice
 ```
 
 # New users
 
 In case if you have not used Spack before, you might want to give it a try. Here is a good [start](
-https://spack.readthedocs.io/en/latest/getting_started.html)
+https://spack.readthedocs.io/en/latest/getting_started.html).
 
 It is a
 > multi-platform package manager that builds and installs multiple versions and configurations of software. It works on Linux, macOS, and many supercomputers.
   Spack is non-destructive: installing a new version of a package does not break existing installations, so many configurations of the same package can coexist.
 
-After installing a package, you can use it with `spack load <package>` (requires e.g. [Environment Modules](http://modules.sourceforge.net/) to be installed). Read more in the [Spack documentation](https://spack.readthedocs.io/en/latest/module_file_support.html).
 
+## Spack installation
 
-When you try to install a package for the first time, quite a lot of dependency packages would be installed, even if they are already present on your system. You can view this list by:
+This section shortly summarises some important points of the [Spack - Getting Started](https://spack.readthedocs.io/en/latest/getting_started.html) documentation.
+
+Spack is installed by simply cloning the [spack repository](https://github.com/spack/spack):
 
 ```bash
-  spack spec precice
+$ git clone https://github.com/spack/spack.git
+```
+_Note_: It might be useful to use the `develop` branch rather than the latest `release` branch, as package URLs change over time and are more frequently updated there.
+
+To enable spack commands in your shell, source the setup script corresponding to your shell or add the command to your bashrc/zshrc/etc. config file:
+
+```bash
+# For bash/zsh users
+export SPACK_ROOT=/path/to/spack
+. $SPACK_ROOT/share/spack/setup-env.sh
+
+# For tcsh or csh users (note you must set SPACK_ROOT)
+setenv SPACK_ROOT /path/to/spack
+source $SPACK_ROOT/share/spack/setup-env.csh
 ```
 
-You can specify dependencies, that are already installed on your system by modifying your preferences in the
-`~/.spack/packages.yaml`.
+With spack installed and shell commands set up, you can install packages with `spack install <package>`. **Using packages installed through spack requires a _module manager_**, either [Environment Modules](http://modules.sourceforge.net/) or [Lmod](https://lmod.readthedocs.io/en/latest/). A convenient way to get one is to execute `spack bootstrap`, which installs the latest version Environment Modules. Of course, you can always install a module manager manually as well.
 
-E.g. to use your own version of MPI
+If you have Environment Modules installed, packages can be enabled with the command `spack load <package>` and are then directly usable. Similarly, to disable a package, use `spack unload <package>`. Not that these commands are specific to Environment Modules, see the [Spack documentation](https://spack.readthedocs.io/en/latest/module_file_support.html) for additional information.
+
+
+## Package installation
+
+When you first try to install a package with spack, a lot of dependency packages would also be installed, even if they are already installed on your local machine. You can view this list by:
+
+```bash
+$ spack spec precice
+```
+
+However, you can instruct spack to recognize specific dependencies that are already installed on your system. This is done by modifying your preferences in `~/.spack/packages.yaml`(_Note_: If this is the first time you set preferences, the file might not exist and you have to create it yourself).
+
+ For example, to specify a locally installed MPI version, you could write:
 
 ```yaml
 packages:
     openmpi:
         paths:
-            openmpi@1.10.1: /opt/local
+            openmpi@3.1.2: /opt/local
         buildable: False
 ```
+Here we specify that a local install of OpenMPI version 3.1.2 exists in `/opt/local`. The `buildable` flag specifies that spack is allowed to look for and build newer versions of the package if they exist instead of using the locally available one. Here we set it to `false` to prevent spack from trying to build a newer version and add unnecessary installation time.
 
-Additionally you might want to opt out some installation options for dependencies of precice such as Eigen and Boost.  
-You can browse options with `spack info boost` and `spack info eigen`.  For instance to browse dependencies of only essential boost libraries,  that are used by preCICE you need to disable some of the default options:
 
-```bash
-./bin/spack install precice ^boost@1.65.1  -atomic -chrono -date_time -exception -graph -iostreams -locale -math -random -regex -serialization -signals -timer -wave ^eigen@3.3.1 -fftw -metis -mpfr -scotch -suitesparse ^openmpi@3.1.2
-```
+## Installing precice and disabling non-essential dependency extensions
 
-Similarly for minimal Eigen version:
+You might want to opt out some default install options for some dependencies of precice as they can cause conflicts. Specifically the extensions of Eigen and Boost are known to cause errors (see Troubleshooting).
+Dependencies and additional information can be queried with `spack info boost` and `spack info eigen`. Another useful command here is `spack edit <package>`, which lets you directly view the package installation source code.
 
-```bash
-./bin/spack spec eigen@3.3.1 -fftw -metis -mpfr -scotch -suitesparse
-```
-
-Overall, then the command for the minimal installation of preCICE could look like
+To install only the essential boost libraries that are used by preCICE, you can strip away some default options of the Eigen and Boost packages:
 
 ```bash
+$ spack install precice ^boost@1.65.1  -atomic -chrono -date_time -exception -graph -iostreams -locale -math -random -regex -serialization -signals -timer -wave ^eigen@3.3.1 -fftw -metis -mpfr -scotch -suitesparse ^openmpi@3.1.2
+```
+Note that we install precice specifically with boost 1.65.1 and eigen 3.3.1. We also demand openmpi 3.1.2 as this allows spack to use the local openmpi install we specified in the example `packages.yaml` above. This is not required, however, feel free to use other openmpi versions or just fully omit the `^openmpi` argument to let spack decide.
 
-./bin/spack install precice ^boost@1.65.1  -atomic -chrono -date_time -exception -graph -iostreams -locale -math -random -regex -serialization -signals -timer -wave ^eigen@3.3.1 -fftw -metis -mpfr -scotch -suitesparse ^openmpi@3.1.2
-```
-
-After some installation time, preCICE will be located in the folder in `$SPACK_FOLDER/opt/spack` based on the compiler and the system. To find out the directory, where preCICE is installed run the following
-```bash
-spack find -p precice
-```
-This can give such output
-```bash
-opt/spack/linux-ubuntu18.04-x86_64/gcc-7.3.0/precice-working-p5f6hf5u3dmyeepa6jwg4j4xyalbn4uc/bin/
-```
+After some installation time, preCICE will be installed in the folder `$SPACK_ROOT/opt/spack/<system-name>/<compiler-name>/` based on the compiler and the system. 
 
 You can also view packages that are installed with  
 
 ```bash
-spack find  
-```
-
-That can have such output:
-```bash
+$ spack find  
 autoconf@2.69    boost@1.60.0  boost@1.67.0  cmake@3.12.3   eigen@3.3.1  hwloc@1.11.9         libsigsegv@2.11  libxml2@2.9.8  ncurses@6.1     openmpi@3.1.2   perl@5.26.2    precice@working  util-macros@1.19.1  zlib@1.2.11
 automake@1.16.1  boost@1.60.0  bzip2@1.0.6   diffutils@3.6  gdbm@1.14.1  libpciaccess@0.13.5  libtool@2.4.6    m4@1.4.18      numactl@2.0.11  openssl@1.0.2o  pkgconf@1.4.2  readline@7.0     xz@5.2.4
 ```
+Note that `spack find` has several optional flags for additionally showing filepaths/compiler version/etc. , see `spack find --help` for more.
 
-To unistall a package simply run:
-```bash
-spack unistall precice
 
-```
-One we have preCICE installed, we can also install openFOAM-adapter:
+## Installing OpenFOAM and the OpenFOAM-adapter
+
+One we have preCICE installed, we can also use spack to install the OpenFOAM-adapter:
 
 ```bash  
-spack install of-precice
+$ spack install of-precice
 ```
 
 If we don't want to build openFOAM from source, but rather use the one already present in the system (or install with the package manager) we need to add configuration in the `~/.spack/packages.yaml` as follows:
-```yml
+```yaml
 packages:
+  ...
+  ...
+  ...
   openfoam-org:
       paths:
         openfoam-org@5.0: /opt/openfoam5
       buildable: False
 ```
 
-Openfoam is a [virtual dependency](https://spack.readthedocs.io/en/latest/basic_usage.html#virtual-dependencies)  (meaning it can satisfied both by openfoam-com and openfoam-org), so we want to select the provider for it.
+Openfoam is a [virtual dependency](https://spack.readthedocs.io/en/latest/basic_usage.html#virtual-dependencies)  (meaning it can satisfied both by `openfoam-com` and `openfoam-org`), so we want to select the provider for it.
 ```
-spack install openfoam ^openfoam-org
+$ spack install openfoam-org
 ```
+*Note*: [Spack directly interprets `openfoam` as `openfoam-com`](https://spack.readthedocs.io/en/latest/package_list.html#openfoam). Beware that this can be problematic when combining `openfoam` and `openfoam-org` expressions.
 
-In order to install openFOAM adapter, we need to have to specify on just installed
-preCICE. We can either write the same specification as before (with selected boost libraries and Eigen versions and options ), or refer to specification by its hash:
+As the OpenFOAM-adapter depends on preCICE, we might want to instruct spack to use the preCICE version we just built for installing `of-precice`. For this we can either supplement `spack install of-precice` with the identical specifications we used before (with selected boost libraries and Eigen versions and options ), or refer to the recent precice install by its hash:
 
 ```bash
-spack find --long precice
-```
-```bash
+$ spack find --long precice
 -- linux-ubuntu18.04-x86_64 / gcc@7.3.0 -------------------------
 dlukq7q precice@develop
 ```
 
-Now, we can install openfoam-adapter with:
+Note that precice package we just installed is identified by the hash `dlukq7q`. Therefore we can reference it when installing the openfoam-adapter with:
 ```bash
-spack install of-precice ^openfoam@5.0 ^/dlukq7q
+$ spack install of-precice ^openfoam-org@5.0 ^/dlukq7q
 ```
 
 # Troubleshooting
@@ -189,12 +200,12 @@ And then use `precice@working` instead of `precice` in the instructions above. F
 ./bin/spack install precice@working ^boost@1.65.1  -atomic -chrono -date_time -exception -graph -iostreams -locale -math -random -regex -serialization -signals -timer -wave ^eigen@3.3.1 -fftw -metis -mpfr -scotch -suitesparse ^openmpi@3.1.2
 ```
 
-## Problem building dependencies
+## Error: Conflicts in concretized spec
 
-There might be conflicts between dependencies. If conflicts are detected, Spack prints an error message starting with `Error: Conflicts in concretized spec`. In this case you may leave out some dependencies (see above) in order to avoid conflicts.
+There might be conflicts between dependencies. If conflicts are detected, Spack prints a large error message starting with `Error: Conflicts in concretized spec` when attempting to execute `spack install` or `spack spec`. This can likely be remedied by removing optional extensions of dependency packages.
 
-**Example (on Ubuntu 18.04):**
-The following error message was generated on Ubuntu 18.04 LTS using the command `spack spec precice` (Find a solution to the problem below):
+**Example:**
+The following error message was generated both on Ubuntu 18.04 LTS and 19.04 using the command `spack spec precice` (Find a solution to the problem below):
 ```
 Input spec
 --------------------------------
@@ -226,12 +237,24 @@ List of matching conflicts for spec:
 
 1. "%gcc@7.2.0:" conflicts with "flex@2.6.4"
 ```
-**Solution**: It was possible to install preCICE using only the essential boost libraries (see above).
+**Solution**: The install succeeds when disabling the `scotch` option of the `eigen` package:
+```bash
+spack install precice ^eigen@3.3.1 -scotch ^openmpi@3.1.3
+```
 
 ## Module: Command not found
 
-Spack works great with [Environment Modules](http://modules.sourceforge.net/), but it needs to be installed. Check [this page](https://spack.readthedocs.io/en/latest/module_file_support.html) and [this answer for Ubuntu](https://askubuntu.com/a/533636/142834).
+This means that either no module manager is installed or no shell support is enabled. Spack works with either [Environment Modules](http://modules.sourceforge.net/) or [Lmod](https://lmod.readthedocs.io/en/latest/), but requires one to be installed to load the modulefiles. You can either install one of them by hand or use the command
+```
+spack bootstrap
+```
+which will install the latest version of Environment Modules directly.
+
+If you already have a module manager installed, be sure to check the related documentation and README files for instructions on how to enable shell commands. 
+
+[This page](https://spack.readthedocs.io/en/latest/module_file_support.html) and [this answer for Ubuntu](https://askubuntu.com/a/533636/142834) might also prove useful.
 
 ## How to run the unit tests?
 
 The script `compileAndTest.py`, as well as the binary `testprecice` are currently not provided with the package.
+
